@@ -69,11 +69,24 @@ class ImportService:
                 existing_keys.add(key)
             else:
                 existing = existing_transactions[key]
+                enriched = False
+
                 if (
                     t.running_balance is not None
                     and existing.running_balance is None
                 ):
                     existing.running_balance = t.running_balance
+                    enriched = True
+
+                if (
+                    t.merchant is not None
+                    and t.merchant != ""
+                    and (existing.merchant is None or existing.merchant == "")
+                ):
+                    existing.merchant = t.merchant
+                    enriched = True
+
+                if enriched:
                     updated_existing = True
 
         if new_transactions or updated_existing:

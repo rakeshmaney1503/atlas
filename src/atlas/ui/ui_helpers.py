@@ -6,7 +6,7 @@ from uuid import UUID
 
 from atlas.database.models.holding import Holding
 from atlas.database.models.transaction import Transaction, TransactionType
-from atlas.schemas.portfolio import PortfolioSnapshot
+from atlas.schemas.portfolio import PortfolioSnapshot, PortfolioViewModel
 from atlas.services.portfolio_service import PortfolioService
 
 
@@ -18,6 +18,10 @@ def format_currency(value: Decimal | None) -> str:
 
 def prepare_portfolio_snapshot(session: "Session", account_id) -> PortfolioSnapshot:
     return PortfolioService.get_portfolio_snapshot(session, account_id)
+
+
+def prepare_portfolio_view_model(session: "Session", account_id) -> PortfolioViewModel:
+    return PortfolioService.get_portfolio_view_model(session, account_id)
 
 
 def _transaction_sort_key(transaction: Transaction) -> tuple:

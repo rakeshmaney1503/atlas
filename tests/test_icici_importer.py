@@ -333,6 +333,108 @@ def test_import_service_updates_existing_transaction_running_balance(tmp_path: P
         assert stored.running_balance == Decimal("1000.0")
 
 
+def test_import_service_enriches_existing_transaction_with_missing_merchant_and_running_balance(tmp_path: Path) -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        account = Account(
+            name="ICICI Savings",
+            institution="ICICI Bank",
+            account_type=AccountType.SAVINGS,
+            opening_balance=Decimal("0.00"),
+        )
+        session.add(account)
+        session.commit()
+        session.refresh(account)
+
+        existing_transaction = Transaction(
+            account_id=account.id,
+            transaction_date=datetime(2026, 7, 1),
+            amount=Decimal("1000.00"),
+            transaction_type=TransactionType.CREDIT,
+            description="DOMINOS PIZZA ORDER",
+            merchant=None,
+            running_balance=None,
+            import_hash="hash1",
+        )
+        session.add(existing_transaction)
+        session.commit()
+
+        data = {
+            "Transaction Date": ["01/07/2026"],
+            "Transaction Remarks": ["DOMINOS PIZZA ORDER"],
+            "Withdrawal Amount(INR)": [0.0],
+            "Deposit Amount(INR)": [1000.0],
+            "Balance(INR)": [1000.0],
+        }
+        df = pd.DataFrame(data)
+        transactions = ICICIImporter.normalize(df, account.id)
+
+        imported_count, duplicate_count = ImportService.import_transactions(
+            session,
+            transactions,
+        )
+
+        assert imported_count == 0
+        assert duplicate_count == 1
+
+        stored = session.exec(select(Transaction)).one()
+        assert stored.running_balance == Decimal("1000.0")
+        assert stored.merchant == "Domino's"
+
+
+def test_import_service_does_not_overwrite_existing_merchant_or_running_balance(tmp_path: Path) -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        account = Account(
+            name="ICICI Savings",
+            institution="ICICI Bank",
+            account_type=AccountType.SAVINGS,
+            opening_balance=Decimal("0.00"),
+        )
+        session.add(account)
+        session.commit()
+        session.refresh(account)
+
+        existing_transaction = Transaction(
+            account_id=account.id,
+            transaction_date=datetime(2026, 7, 1),
+            amount=Decimal("1000.00"),
+            transaction_type=TransactionType.CREDIT,
+            description="DOMINOS PIZZA ORDER",
+            merchant="Existing Merchant",
+            running_balance=Decimal("1000.00"),
+            import_hash="hash1",
+        )
+        session.add(existing_transaction)
+        session.commit()
+
+        data = {
+            "Transaction Date": ["01/07/2026"],
+            "Transaction Remarks": ["DOMINOS PIZZA ORDER"],
+            "Withdrawal Amount(INR)": [0.0],
+            "Deposit Amount(INR)": [1000.0],
+            "Balance(INR)": [2000.0],
+        }
+        df = pd.DataFrame(data)
+        transactions = ICICIImporter.normalize(df, account.id)
+
+        imported_count, duplicate_count = ImportService.import_transactions(
+            session,
+            transactions,
+        )
+
+        assert imported_count == 0
+        assert duplicate_count == 1
+
+        stored = session.exec(select(Transaction)).one()
+        assert stored.running_balance == Decimal("1000.00")
+        assert stored.merchant == "Existing Merchant"
+
+
 def test_icici_importer_handles_missing_running_balance_column(tmp_path: Path) -> None:
     data = {
         "Transaction Date": ["01/07/2026"],

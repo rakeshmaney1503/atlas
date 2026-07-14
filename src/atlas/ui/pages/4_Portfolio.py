@@ -6,7 +6,7 @@ from sqlmodel import Session
 from atlas.database.models.account import AccountType
 from atlas.database.session import engine
 from atlas.services.account_service import AccountService
-from atlas.ui.ui_helpers import prepare_portfolio_snapshot, format_currency
+from atlas.ui.ui_helpers import prepare_portfolio_view_model, format_currency
 
 st.set_page_config(
     page_title="Portfolio",
@@ -30,18 +30,18 @@ with Session(engine) as session:
         st.info("No investment account found.")
         st.stop()
 
-    snapshot = prepare_portfolio_snapshot(session, account.id)
+    view_model = prepare_portfolio_view_model(session, account.id)
 
-if not snapshot.holdings:
+if not view_model.holdings:
     st.info("No holdings found.")
     st.stop()
 
 rows = []
 
-invested = float(snapshot.summary.invested)
-current = float(snapshot.summary.current_value)
+invested = float(view_model.summary.invested)
+current = float(view_model.summary.current_value)
 
-for holding in snapshot.holdings:
+for holding in view_model.holdings:
     rows.append(
         {
             "Instrument": holding.instrument,
@@ -56,29 +56,6 @@ for holding in snapshot.holdings:
     )
 
 df = pd.DataFrame(rows)
-
-df["Allocation %"] = (
-    df["Current"] / current * 100
-).round(2)
-
-summary1, summary2, summary3 = st.columns(3)
-
-summary1.metric(
-    "Invested",
-    f"₹ {invested:,.2f}",
-)
-
-summary2.metric(
-    "Current Value",
-    f"₹ {current:,.2f}",
-)
-
-summary3.metric(
-    "Overall P&L",
-    f"₹ {current - invested:,.2f}",
-)
-
-st.divider()
 
 st.subheader("Portfolio Holdings")
 
@@ -162,18 +139,15 @@ st.divider()
 
 st.subheader("Top Holdings")
 
-top_df = (
-    df.sort_values(
-        "Current",
-        ascending=False,
-    )[
-        [
-            "Instrument",
-            "Current",
-            "Allocation %",
-        ]
+top_df = pd.DataFrame(
+    [
+        {
+            "Instrument": holding.instrument,
+            "Current": float(holding.current_value),
+            "Allocation %": float(holding.allocation_percent),
+        }
+        for holding in view_model.top_holdings
     ]
-    .copy()
 )
 
 top_df["Current"] = top_df["Current"].map(
