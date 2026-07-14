@@ -23,6 +23,7 @@ class PortfolioSummary(SQLModel):
     invested: Decimal
     current_value: Decimal
     pnl: Decimal
+    percentage_return: Decimal
 
 
 class PortfolioAllocationRow(SQLModel):

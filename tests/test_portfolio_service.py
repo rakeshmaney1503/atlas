@@ -22,6 +22,7 @@ def test_portfolio_service_returns_empty_snapshot_for_no_holdings() -> None:
     assert snapshot.summary.invested == Decimal("0.00")
     assert snapshot.summary.current_value == Decimal("0.00")
     assert snapshot.summary.pnl == Decimal("0.00")
+    assert snapshot.summary.percentage_return == Decimal("0.00")
     assert snapshot.holdings == []
 
 
@@ -68,6 +69,7 @@ def test_portfolio_service_computes_summary_and_rows() -> None:
     assert snapshot.summary.invested == Decimal("2000.00")
     assert snapshot.summary.current_value == Decimal("2000.00")
     assert snapshot.summary.pnl == Decimal("0.00")
+    assert snapshot.summary.percentage_return == Decimal("0.00")
     assert len(snapshot.holdings) == 2
 
     first_row = snapshot.holdings[0]
@@ -145,3 +147,114 @@ def test_portfolio_service_computes_allocations_and_top_holdings() -> None:
     assert snapshot.top_holdings[1].instrument == "Stock A"
     assert snapshot.top_holdings[2].instrument == "Stock B"
     assert snapshot.top_holdings[0].allocation_percent == Decimal("37.50")
+
+
+def test_portfolio_service_computes_roi_with_nonzero_invested_amount() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        holdings = [
+            Holding(
+                account_id=UUID("11111111-1111-1111-1111-111111111111"),
+                instrument="Stock A",
+                quantity=Decimal("10"),
+                average_cost=Decimal("100.00"),
+                last_traded_price=Decimal("110.00"),
+                invested_amount=Decimal("1000.00"),
+                current_value=Decimal("1100.00"),
+                pnl=Decimal("100.00"),
+                net_change_percent=Decimal("10.00"),
+                day_change_percent=Decimal("0.50"),
+            ),
+            Holding(
+                account_id=UUID("11111111-1111-1111-1111-111111111111"),
+                instrument="Stock B",
+                quantity=Decimal("5"),
+                average_cost=Decimal("200.00"),
+                last_traded_price=Decimal("180.00"),
+                invested_amount=Decimal("1000.00"),
+                current_value=Decimal("900.00"),
+                pnl=Decimal("-100.00"),
+                net_change_percent=Decimal("-10.00"),
+                day_change_percent=Decimal("-0.25"),
+            ),
+        ]
+
+        session.add_all(holdings)
+        session.commit()
+
+        snapshot = PortfolioService.get_portfolio_snapshot(
+            session,
+            UUID("11111111-1111-1111-1111-111111111111"),
+        )
+
+    assert snapshot.summary.invested == Decimal("2000.00")
+    assert snapshot.summary.current_value == Decimal("2000.00")
+    assert snapshot.summary.percentage_return == Decimal("0.00")
+
+
+def test_portfolio_service_returns_zero_roi_when_invested_is_zero() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        holdings = [
+            Holding(
+                account_id=UUID("11111111-1111-1111-1111-111111111111"),
+                instrument="Stock A",
+                quantity=Decimal("10"),
+                average_cost=Decimal("0.00"),
+                last_traded_price=Decimal("110.00"),
+                invested_amount=Decimal("0.00"),
+                current_value=Decimal("1100.00"),
+                pnl=Decimal("1100.00"),
+                net_change_percent=Decimal("0.00"),
+                day_change_percent=Decimal("0.50"),
+            ),
+        ]
+
+        session.add_all(holdings)
+        session.commit()
+
+        snapshot = PortfolioService.get_portfolio_snapshot(
+            session,
+            UUID("11111111-1111-1111-1111-111111111111"),
+        )
+
+    assert snapshot.summary.invested == Decimal("0.00")
+    assert snapshot.summary.current_value == Decimal("1100.00")
+    assert snapshot.summary.percentage_return == Decimal("0.00")
+
+
+def test_portfolio_service_handles_zero_current_value() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        holdings = [
+            Holding(
+                account_id=UUID("11111111-1111-1111-1111-111111111111"),
+                instrument="Stock A",
+                quantity=Decimal("10"),
+                average_cost=Decimal("100.00"),
+                last_traded_price=Decimal("0.00"),
+                invested_amount=Decimal("1000.00"),
+                current_value=Decimal("0.00"),
+                pnl=Decimal("-1000.00"),
+                net_change_percent=Decimal("-100.00"),
+                day_change_percent=Decimal("0.00"),
+            ),
+        ]
+
+        session.add_all(holdings)
+        session.commit()
+
+        snapshot = PortfolioService.get_portfolio_snapshot(
+            session,
+            UUID("11111111-1111-1111-1111-111111111111"),
+        )
+
+    assert snapshot.summary.invested == Decimal("1000.00")
+    assert snapshot.summary.current_value == Decimal("0.00")
+    assert snapshot.summary.percentage_return == Decimal("-100.00")

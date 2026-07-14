@@ -40,10 +40,19 @@ class PortfolioService:
             Decimal("0.00"),
         )
 
+        percentage_return = Decimal("0.00")
+        if invested != Decimal("0.00"):
+            percentage_return = (
+                (current_value - invested)
+                / invested
+                * Decimal("100.00")
+            )
+
         return PortfolioSummary(
             invested=invested,
             current_value=current_value,
             pnl=pnl,
+            percentage_return=percentage_return,
         )
 
     @staticmethod

@@ -36,6 +36,25 @@ if not view_model.holdings:
     st.info("No holdings found.")
     st.stop()
 
+st.subheader("Portfolio Performance Summary")
+summary_cols = st.columns(4)
+summary_cols[0].metric(
+    "Total Invested Value",
+    format_currency(view_model.summary.invested),
+)
+summary_cols[1].metric(
+    "Total Current Value",
+    format_currency(view_model.summary.current_value),
+)
+summary_cols[2].metric(
+    "Absolute P&L",
+    format_currency(view_model.summary.pnl),
+)
+summary_cols[3].metric(
+    "ROI",
+    f"{view_model.summary.percentage_return:.2f}%",
+)
+
 rows = []
 
 invested = float(view_model.summary.invested)
