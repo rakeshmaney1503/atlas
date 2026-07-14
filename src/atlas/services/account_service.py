@@ -54,7 +54,13 @@ class AccountService:
                     balance -= transaction.amount
             return balance
 
-        return transactions[latest_running_index].running_balance
+        balance = transactions[latest_running_index].running_balance
+        for transaction in transactions[latest_running_index + 1 :]:
+            if transaction.transaction_type == TransactionType.CREDIT:
+                balance += transaction.amount
+            else:
+                balance -= transaction.amount
+        return balance
 
     @staticmethod
     def get_cash_balance(session: Session) -> Decimal:

@@ -376,3 +376,4 @@ Ask instead.
 Never sacrifice correctness for speed.
 
 Always leave Atlas in a working state.
+Every feature should build a foundation for future features, not just solve today's problem.

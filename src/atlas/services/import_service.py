@@ -20,12 +20,8 @@ class ImportService:
 
         # Build a set of existing normalized keys to deduplicate robustly.
         existing_rows = session.exec(
-            select(
-                Transaction.account_id,
-                Transaction.transaction_date,
-                Transaction.amount,
-                Transaction.description,
-            ).where(Transaction.account_id.in_(list(account_ids)))
+            select(Transaction)
+            .where(Transaction.account_id.in_(list(account_ids)))
         ).all()
 
         def normalize_row_key(account_id, tx_date, amount, description):
@@ -47,16 +43,40 @@ class ImportService:
 
             return (str(account_id), date_key, amount_key, desc_key)
 
-        existing_keys = {normalize_row_key(*r) for r in existing_rows}
+        existing_transactions: dict[tuple[str, str, str, str], Transaction] = {}
+        existing_keys = set()
+        for row in existing_rows:
+            key = normalize_row_key(
+                row.account_id,
+                row.transaction_date,
+                row.amount,
+                row.description,
+            )
+            existing_keys.add(key)
+            existing_transactions[key] = row
 
         new_transactions = []
+        updated_existing = False
         for t in transactions:
-            key = normalize_row_key(t.account_id, t.transaction_date, t.amount, t.description)
+            key = normalize_row_key(
+                t.account_id,
+                t.transaction_date,
+                t.amount,
+                t.description,
+            )
             if key not in existing_keys:
                 new_transactions.append(t)
                 existing_keys.add(key)
+            else:
+                existing = existing_transactions[key]
+                if (
+                    t.running_balance is not None
+                    and existing.running_balance is None
+                ):
+                    existing.running_balance = t.running_balance
+                    updated_existing = True
 
-        if new_transactions:
+        if new_transactions or updated_existing:
             session.add_all(new_transactions)
             session.commit()
 

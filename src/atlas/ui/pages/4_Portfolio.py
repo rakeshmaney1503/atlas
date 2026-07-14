@@ -6,7 +6,7 @@ from sqlmodel import Session
 from atlas.database.models.account import AccountType
 from atlas.database.session import engine
 from atlas.services.account_service import AccountService
-from atlas.services.holding_service import HoldingService
+from atlas.ui.ui_helpers import prepare_portfolio_snapshot, format_currency
 
 st.set_page_config(
     page_title="Portfolio",
@@ -30,33 +30,28 @@ with Session(engine) as session:
         st.info("No investment account found.")
         st.stop()
 
-    holdings = HoldingService.get_holdings(
-        session,
-        account.id,
-    )
+    snapshot = prepare_portfolio_snapshot(session, account.id)
 
-if not holdings:
+if not snapshot.holdings:
     st.info("No holdings found.")
     st.stop()
 
 rows = []
 
-invested = 0.0
-current = 0.0
+invested = float(snapshot.summary.invested)
+current = float(snapshot.summary.current_value)
 
-for h in holdings:
-    invested += float(h.invested_amount)
-    current += float(h.current_value)
-
+for holding in snapshot.holdings:
     rows.append(
         {
-            "Instrument": h.instrument,
-            "Quantity": float(h.quantity),
-            "Avg Cost": float(h.average_cost),
-            "LTP": float(h.last_traded_price),
-            "Invested": float(h.invested_amount),
-            "Current": float(h.current_value),
-            "P&L": float(h.pnl),
+            "Instrument": holding.instrument,
+            "Quantity": float(holding.quantity),
+            "Avg Cost": float(holding.average_cost),
+            "LTP": float(holding.last_traded_price),
+            "Invested": float(holding.invested_amount),
+            "Current": float(holding.current_value),
+            "P&L": float(holding.pnl),
+            "Allocation %": float(holding.allocation_percent),
         }
     )
 

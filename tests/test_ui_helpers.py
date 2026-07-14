@@ -98,3 +98,32 @@ def test_compute_net_worth_adds_cash_and_investments() -> None:
 def test_format_currency_returns_empty_for_none() -> None:
     assert format_currency(None) == ""
     assert format_currency(Decimal("1234.56")) == "₹ 1,234.56"
+
+
+def test_prepare_transaction_rows_computes_missing_running_balance() -> None:
+    transactions = [
+        Transaction(
+            id=UUID("11111111-1111-1111-1111-111111111111"),
+            account_id=UUID("22222222-2222-2222-2222-222222222222"),
+            transaction_date=datetime(2026, 7, 1),
+            amount=Decimal("1000.00"),
+            transaction_type=TransactionType.CREDIT,
+            description="Salary",
+            running_balance=Decimal("1000.00"),
+            import_hash="hash1",
+        ),
+        Transaction(
+            id=UUID("33333333-3333-3333-3333-333333333333"),
+            account_id=UUID("22222222-2222-2222-2222-222222222222"),
+            transaction_date=datetime(2026, 7, 2),
+            amount=Decimal("100.00"),
+            transaction_type=TransactionType.DEBIT,
+            description="Coffee",
+            running_balance=None,
+            import_hash="hash2",
+        ),
+    ]
+
+    rows = prepare_transaction_rows(transactions)
+
+    assert rows[1]["Running Balance"] == "₹ 900.00"
