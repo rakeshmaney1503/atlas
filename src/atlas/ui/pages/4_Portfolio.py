@@ -55,6 +55,33 @@ summary_cols[3].metric(
     f"{view_model.summary.percentage_return:.2f}%",
 )
 
+st.subheader("Portfolio Health")
+health_cols = st.columns(6)
+health_cols[0].metric(
+    "Diversification Score",
+    f"{view_model.summary.diversification_score:.2f}%",
+)
+health_cols[1].metric(
+    "Concentration Risk",
+    view_model.summary.concentration_risk,
+)
+health_cols[2].metric(
+    "Largest Holding %",
+    f"{view_model.summary.largest_holding_percent:.2f}%",
+)
+health_cols[3].metric(
+    "Top 5 Holdings %",
+    f"{view_model.summary.top_5_concentration:.2f}%",
+)
+health_cols[4].metric(
+    "Effective Holdings",
+    f"{view_model.summary.effective_holdings:.2f}",
+)
+health_cols[5].metric(
+    "HHI",
+    f"{view_model.summary.hhi:.4f}",
+)
+
 rows = []
 
 invested = float(view_model.summary.invested)

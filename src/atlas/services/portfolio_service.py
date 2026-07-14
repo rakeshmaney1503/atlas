@@ -48,11 +48,52 @@ class PortfolioService:
                 * Decimal("100.00")
             )
 
+        diversification_score = Decimal("0.00")
+        hhi = Decimal("0.00")
+        effective_holdings = Decimal("0.00")
+        top_5_concentration = Decimal("0.00")
+        largest_holding_percent = Decimal("0.00")
+        concentration_risk = "Low"
+
+        if current_value > Decimal("0.00") and holdings:
+            weights = [
+                h.current_value / current_value
+                for h in holdings
+            ]
+            hhi = sum((w * w for w in weights), Decimal("0.00"))
+            if hhi > Decimal("0.00"):
+                effective_holdings = Decimal("1.00") / hhi
+
+            diversification_score = (
+                Decimal("1.00") - hhi
+            ) * Decimal("100.00")
+            if diversification_score < Decimal("0.00"):
+                diversification_score = Decimal("0.00")
+
+            sorted_weights = sorted(weights, reverse=True)
+            largest_holding_percent = sorted_weights[0] * Decimal("100.00")
+            top_5_concentration = sum(sorted_weights[:5], Decimal("0.00")) * Decimal(
+                "100.00"
+            )
+
+            if hhi <= Decimal("0.10"):
+                concentration_risk = "Low"
+            elif hhi <= Decimal("0.25"):
+                concentration_risk = "Medium"
+            else:
+                concentration_risk = "High"
+
         return PortfolioSummary(
             invested=invested,
             current_value=current_value,
             pnl=pnl,
             percentage_return=percentage_return,
+            diversification_score=diversification_score,
+            hhi=hhi,
+            effective_holdings=effective_holdings,
+            top_5_concentration=top_5_concentration,
+            largest_holding_percent=largest_holding_percent,
+            concentration_risk=concentration_risk,
         )
 
     @staticmethod

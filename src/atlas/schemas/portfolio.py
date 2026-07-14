@@ -24,6 +24,12 @@ class PortfolioSummary(SQLModel):
     current_value: Decimal
     pnl: Decimal
     percentage_return: Decimal
+    diversification_score: Decimal
+    hhi: Decimal
+    effective_holdings: Decimal
+    top_5_concentration: Decimal
+    largest_holding_percent: Decimal
+    concentration_risk: str
 
 
 class PortfolioAllocationRow(SQLModel):
