@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 
 from atlas.database.models.transaction import Transaction
 from atlas.database.session import engine
+from atlas.ui.ui_helpers import prepare_transaction_rows
 
 st.title("💳 Transactions")
 
@@ -16,18 +17,7 @@ if not transactions:
     st.info("No transactions found.")
     st.stop()
 
-rows = []
-
-for t in transactions:
-    rows.append(
-        {
-            "Date": t.transaction_date.date(),
-            "Category": t.category,
-            "Type": t.transaction_type.value,
-            "Amount": float(t.amount),
-            "Description": t.description,
-        }
-    )
+rows = prepare_transaction_rows(transactions)
 
 df = pd.DataFrame(rows)
 

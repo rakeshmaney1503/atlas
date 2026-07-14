@@ -7,6 +7,7 @@ from atlas.database.session import engine
 from atlas.importers.icici_importer import ICICIImporter
 from atlas.services.account_service import AccountService
 from atlas.services.import_service import ImportService
+from atlas.services.merchant_recognition_service import MerchantRecognitionService
 
 st.title("📥 Import ICICI Statement")
 
@@ -42,15 +43,22 @@ if uploaded_file:
 
     st.success(f"Found {len(preview_df)} transactions")
 
+    preview_df["Merchant"] = preview_df["Transaction Remarks"].map(
+        lambda text: MerchantRecognitionService.recognize(text)
+    )
+
+    preview_columns = [
+        "Transaction Date",
+        "Transaction Remarks",
+        "Merchant",
+        "Withdrawal Amount(INR)",
+        "Deposit Amount(INR)",
+    ]
+    if "Balance(INR)" in preview_df.columns:
+        preview_columns.append("Balance(INR)")
+
     st.dataframe(
-        preview_df[
-            [
-                "Transaction Date",
-                "Transaction Remarks",
-                "Withdrawal Amount(INR)",
-                "Deposit Amount(INR)",
-            ]
-        ],
+        preview_df[preview_columns],
         width="stretch",
         hide_index=True,
     )

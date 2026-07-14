@@ -115,8 +115,28 @@ class CategorizationService:
         ),
     ]
 
+    MERCHANT_CATEGORIES = [
+        (['Domino\'s'], 'Food'),
+        (['Netflix'], 'Subscription'),
+        (['ACT'], 'Internet'),
+        (['LIC'], 'Insurance'),
+        (['PPFAS'], 'Investment'),
+        (['Zerodha'], 'Investment'),
+        (['Google Play'], 'Digital Services'),
+    ]
+
     @classmethod
-    def categorize(cls, description: str) -> str:
+    def categorize(
+        cls,
+        description: str,
+        merchant: str | None = None,
+    ) -> str:
+        if merchant:
+            for keywords, category in cls.MERCHANT_CATEGORIES:
+                for keyword in keywords:
+                    if keyword.lower() == merchant.lower():
+                        return category
+
         description = description.lower()
 
         for keywords, category in cls.RULES:
