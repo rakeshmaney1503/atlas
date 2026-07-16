@@ -9,6 +9,13 @@ class Settings(BaseSettings):
     debug: bool = False
     database_url: str = "sqlite:///atlas.db"
 
+    # Market Data Providers
+    fmp_api_key: str | None = None
+    alpha_vantage_api_key: str | None = None
+
+    # Metadata refresh policy
+    metadata_cache_days: int = 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="ATLAS_",
