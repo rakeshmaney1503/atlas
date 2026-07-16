@@ -4,6 +4,7 @@ from atlas.schemas.financial_metrics import FinancialMetrics
 from atlas.services.screener.financial_strength import FinancialStrengthRules
 from atlas.services.screener.growth import GrowthRules
 from atlas.services.screener.quality import QualityRules
+from atlas.services.screener.valuation import ValuationRules
 from atlas.services.screener_service import ScreenerService
 
 
@@ -11,17 +12,30 @@ def build_metrics(**kwargs) -> FinancialMetrics:
     defaults = dict(
         symbol="TCS",
         company_name="Tata Consultancy Services",
+
+        # Quality
         roe=Decimal("0"),
         roce=Decimal("0"),
         roa=Decimal("0"),
+
+        # Financial Strength
         debt_to_equity=Decimal("2"),
         current_ratio=Decimal("1"),
         interest_coverage=Decimal("1"),
         free_cash_flow=Decimal("-1"),
         operating_cash_flow=Decimal("-1"),
+
+        # Growth
         revenue_growth=Decimal("15"),
         eps_growth=Decimal("15"),
         free_cash_flow_growth=Decimal("15"),
+
+        # Valuation
+        pe_ratio=Decimal("20"),
+        pb_ratio=Decimal("3"),
+        peg_ratio=Decimal("1"),
+        ev_ebitda=Decimal("10"),
+        price_to_sales=Decimal("3"),
     )
 
     defaults.update(kwargs)
@@ -31,33 +45,25 @@ def build_metrics(**kwargs) -> FinancialMetrics:
 
 def test_roe_passes() -> None:
     metrics = build_metrics(roe=Decimal("18"))
-
     result = QualityRules.evaluate_roe(metrics)
-
     assert result.passed is True
 
 
 def test_roe_fails() -> None:
     metrics = build_metrics(roe=Decimal("12"))
-
     result = QualityRules.evaluate_roe(metrics)
-
     assert result.passed is False
 
 
 def test_roce_passes() -> None:
     metrics = build_metrics(roce=Decimal("22"))
-
     result = QualityRules.evaluate_roce(metrics)
-
     assert result.passed is True
 
 
 def test_roa_passes() -> None:
     metrics = build_metrics(roa=Decimal("10"))
-
     result = QualityRules.evaluate_roa(metrics)
-
     assert result.passed is True
 
 
@@ -101,16 +107,26 @@ def test_growth_full_marks() -> None:
     assert card.score == Decimal("30")
 
 
+def test_valuation_full_marks() -> None:
+    metrics = build_metrics()
+
+    card = ValuationRules.evaluate(metrics)
+
+    assert card.score == Decimal("50")
+
+
 def test_company_score() -> None:
     metrics = build_metrics(
         roe=Decimal("30"),
         roce=Decimal("32"),
         roa=Decimal("12"),
+
         debt_to_equity=Decimal("0.40"),
         current_ratio=Decimal("2.50"),
         interest_coverage=Decimal("12"),
         free_cash_flow=Decimal("1000"),
         operating_cash_flow=Decimal("2000"),
+
         revenue_growth=Decimal("20"),
         eps_growth=Decimal("20"),
         free_cash_flow_growth=Decimal("20"),
@@ -124,8 +140,9 @@ def test_company_score() -> None:
     assert score.quality_score == Decimal("30")
     assert score.financial_strength_score == Decimal("50")
     assert score.growth_score == Decimal("30")
+    assert score.valuation_score == Decimal("50")
 
-    assert score.total_score == Decimal("110")
+    assert score.total_score == Decimal("160")
 
     assert score.recommendation == "Strong Buy"
     assert score.confidence == "High"

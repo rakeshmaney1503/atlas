@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from atlas.services.screener.growth import GrowthRules
+
+from atlas.schemas.company_score import CompanyScore
 from atlas.schemas.financial_metrics import FinancialMetrics
 from atlas.services.screener.financial_strength import FinancialStrengthRules
+from atlas.services.screener.growth import GrowthRules
 from atlas.services.screener.quality import QualityRules
-from atlas.schemas.company_score import CompanyScore
+from atlas.services.screener.valuation import ValuationRules
+
 
 class ScreenerService:
     """
@@ -24,12 +27,13 @@ class ScreenerService:
             QualityRules.evaluate(metrics),
             FinancialStrengthRules.evaluate(metrics),
             GrowthRules.evaluate(metrics),
+            ValuationRules.evaluate(metrics),
         ]
 
         quality_score = Decimal("0")
         financial_strength_score = Decimal("0")
-        valuation_score = Decimal("0")
         growth_score = Decimal("0")
+        valuation_score = Decimal("0")
         risk_score = Decimal("0")
 
         screening_results = []
@@ -51,15 +55,18 @@ class ScreenerService:
             elif card.category == "Growth":
                 growth_score = card.score
 
+            elif card.category == "Valuation":
+                valuation_score = card.score
+
         # ----------------------------------------------------
         # Recommendation
         # ----------------------------------------------------
 
-        if total_score >= Decimal("90"):
+        if total_score >= Decimal("140"):
             recommendation = "Strong Buy"
-        elif total_score >= Decimal("75"):
+        elif total_score >= Decimal("110"):
             recommendation = "Buy"
-        elif total_score >= Decimal("60"):
+        elif total_score >= Decimal("80"):
             recommendation = "Candidate"
         else:
             recommendation = "Watch"
@@ -68,9 +75,9 @@ class ScreenerService:
         # Confidence
         # ----------------------------------------------------
 
-        if total_score >= Decimal("75"):
+        if total_score >= Decimal("140"):
             confidence = "High"
-        elif total_score >= Decimal("50"):
+        elif total_score >= Decimal("100"):
             confidence = "Medium"
         else:
             confidence = "Low"
@@ -78,14 +85,19 @@ class ScreenerService:
         return CompanyScore(
             symbol=metrics.symbol,
             company_name=metrics.company_name,
+
             quality_score=quality_score,
             financial_strength_score=financial_strength_score,
-            valuation_score=valuation_score,
             growth_score=growth_score,
+            valuation_score=valuation_score,
             risk_score=risk_score,
+
             total_score=total_score,
+
             recommendation=recommendation,
             confidence=confidence,
+
             scorecards=scorecards,
+
             screening_results=screening_results,
         )
