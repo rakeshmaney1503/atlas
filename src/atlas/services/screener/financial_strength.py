@@ -3,17 +3,17 @@ from __future__ import annotations
 from decimal import Decimal
 
 from atlas.schemas.financial_metrics import FinancialMetrics
-from atlas.schemas.screener import ScreeningResult
-
+from atlas.schemas.scorecard import ScoreCard
+from atlas.schemas.screening_result import ScreeningResult
 
 class FinancialStrengthRules:
     """
     Financial Strength screening rules.
 
-    These rules evaluate the balance sheet and cash-flow quality
-    of a company. Every passing rule contributes equally to the
-    Financial Strength Score.
+    Evaluates balance sheet strength and cash-flow quality.
     """
+
+    MAX_SCORE = Decimal("50")
 
     @staticmethod
     def _evaluate(
@@ -26,10 +26,11 @@ class FinancialStrengthRules:
         failure_message: str,
     ) -> ScreeningResult:
 
-        if higher_is_better:
-            passed = value >= threshold
-        else:
-            passed = value <= threshold
+        passed = (
+            value >= threshold
+            if higher_is_better
+            else value <= threshold
+        )
 
         return ScreeningResult(
             rule=rule,
@@ -47,7 +48,7 @@ class FinancialStrengthRules:
         return FinancialStrengthRules._evaluate(
             rule="Debt to Equity",
             value=metrics.debt_to_equity,
-            threshold=Decimal("1.00"),
+            threshold=Decimal("1.0"),
             higher_is_better=False,
             success_message="Debt level is acceptable.",
             failure_message="Debt level is higher than preferred.",
@@ -61,7 +62,7 @@ class FinancialStrengthRules:
         return FinancialStrengthRules._evaluate(
             rule="Current Ratio",
             value=metrics.current_ratio,
-            threshold=Decimal("1.50"),
+            threshold=Decimal("1.5"),
             higher_is_better=True,
             success_message="Liquidity position is healthy.",
             failure_message="Current ratio is below preferred level.",
@@ -75,7 +76,7 @@ class FinancialStrengthRules:
         return FinancialStrengthRules._evaluate(
             rule="Interest Coverage",
             value=metrics.interest_coverage,
-            threshold=Decimal("3.00"),
+            threshold=Decimal("3"),
             higher_is_better=True,
             success_message="Interest obligations are comfortably covered.",
             failure_message="Interest coverage is weak.",
@@ -91,8 +92,8 @@ class FinancialStrengthRules:
             value=metrics.free_cash_flow,
             threshold=Decimal("0"),
             higher_is_better=True,
-            success_message="Company generates positive free cash flow.",
-            failure_message="Company generates negative free cash flow.",
+            success_message="Positive free cash flow.",
+            failure_message="Negative free cash flow.",
         )
 
     @staticmethod
@@ -105,14 +106,14 @@ class FinancialStrengthRules:
             value=metrics.operating_cash_flow,
             threshold=Decimal("0"),
             higher_is_better=True,
-            success_message="Operating cash flow is positive.",
-            failure_message="Operating cash flow is negative.",
+            success_message="Positive operating cash flow.",
+            failure_message="Negative operating cash flow.",
         )
 
     @staticmethod
-    def calculate_score(
+    def evaluate(
         metrics: FinancialMetrics,
-    ) -> tuple[Decimal, list[ScreeningResult]]:
+    ) -> ScoreCard:
 
         results = [
             FinancialStrengthRules.evaluate_debt_to_equity(metrics),
@@ -128,4 +129,34 @@ class FinancialStrengthRules:
             if result.passed:
                 score += Decimal("10")
 
-        return score, results
+        percentage = Decimal("0")
+
+        if FinancialStrengthRules.MAX_SCORE > Decimal("0"):
+            percentage = (
+                score
+                / FinancialStrengthRules.MAX_SCORE
+                * Decimal("100")
+            )
+
+        return ScoreCard(
+            category="Financial Strength",
+            score=score,
+            max_score=FinancialStrengthRules.MAX_SCORE,
+            percentage=percentage,
+            results=results,
+        )
+
+    @staticmethod
+    def calculate_score(
+        metrics: FinancialMetrics,
+    ) -> tuple[Decimal, list[ScreeningResult]]:
+        """
+        Legacy API retained during migration.
+        """
+
+        card = FinancialStrengthRules.evaluate(metrics)
+
+        return (
+            card.score,
+            card.results,
+        )

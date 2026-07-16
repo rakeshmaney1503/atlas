@@ -1,44 +1,21 @@
-from __future__ import annotations
+"""
+Backward compatibility module.
 
-from decimal import Decimal
+Older code imports:
 
-from pydantic import ConfigDict
-from sqlmodel import SQLModel
+    from atlas.schemas.screener import CompanyScore
+    from atlas.schemas.screener import ScreeningResult
 
+New code should import from:
 
-class ScreeningResult(SQLModel):
-    """
-    Result of evaluating a company against a single screening rule.
-    """
+    atlas.schemas.company_score
+    atlas.schemas.screening_result
+"""
 
-    model_config = ConfigDict(from_attributes=True)
+from atlas.schemas.company_score import CompanyScore
+from atlas.schemas.screening_result import ScreeningResult
 
-    rule: str
-    passed: bool
-    value: Decimal | str | None = None
-    threshold: Decimal | str | None = None
-    message: str
-
-
-class CompanyScore(SQLModel):
-    """
-    Overall score assigned to a company.
-    """
-
-    model_config = ConfigDict(from_attributes=True)
-
-    symbol: str
-    company_name: str
-
-    quality_score: Decimal = Decimal("0")
-    financial_strength_score: Decimal = Decimal("0")
-    valuation_score: Decimal = Decimal("0")
-    growth_score: Decimal = Decimal("0")
-    risk_score: Decimal = Decimal("0")
-
-    total_score: Decimal = Decimal("0")
-
-    recommendation: str = ""
-    confidence: str = ""
-
-    screening_results: list[ScreeningResult] = []
+__all__ = [
+    "CompanyScore",
+    "ScreeningResult",
+]

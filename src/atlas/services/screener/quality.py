@@ -3,8 +3,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 from atlas.schemas.financial_metrics import FinancialMetrics
-from atlas.schemas.screener import ScreeningResult
-
+from atlas.schemas.scorecard import ScoreCard
+from atlas.schemas.screening_result import ScreeningResult
 
 class QualityRules:
     """
@@ -12,6 +12,8 @@ class QualityRules:
 
     Each rule is deterministic and independent.
     """
+
+    MAX_SCORE = Decimal("30")
 
     @staticmethod
     def _evaluate_threshold(
@@ -77,9 +79,9 @@ class QualityRules:
         )
 
     @staticmethod
-    def calculate_score(
+    def evaluate(
         metrics: FinancialMetrics,
-    ) -> tuple[Decimal, list[ScreeningResult]]:
+    ) -> ScoreCard:
 
         results = [
             QualityRules.evaluate_roe(metrics),
@@ -93,4 +95,38 @@ class QualityRules:
             if result.passed:
                 score += Decimal("10")
 
-        return score, results
+        percentage = Decimal("0")
+
+        if QualityRules.MAX_SCORE > Decimal("0"):
+            percentage = (
+                score
+                / QualityRules.MAX_SCORE
+                * Decimal("100")
+            )
+
+        return ScoreCard(
+            category="Quality",
+            score=score,
+            max_score=QualityRules.MAX_SCORE,
+            percentage=percentage,
+            results=results,
+        )
+
+    @staticmethod
+    def calculate_score(
+        metrics: FinancialMetrics,
+    ) -> tuple[Decimal, list[ScreeningResult]]:
+        """
+        Legacy API.
+
+        This exists temporarily so that existing code and tests
+        continue to work while the rest of the screener is migrated
+        to ScoreCard.
+        """
+
+        card = QualityRules.evaluate(metrics)
+
+        return (
+            card.score,
+            card.results,
+        )

@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 from decimal import Decimal
-
+from atlas.services.screener.growth import GrowthRules
 from atlas.schemas.financial_metrics import FinancialMetrics
-from atlas.schemas.screener import CompanyScore
 from atlas.services.screener.financial_strength import FinancialStrengthRules
 from atlas.services.screener.quality import QualityRules
-
+from atlas.schemas.company_score import CompanyScore
 
 class ScreenerService:
     """
     Atlas Screening Engine.
 
-    Orchestrates all screening modules and produces
-    a unified CompanyScore.
+    Orchestrates all screening modules.
+    Each module returns a ScoreCard.
     """
 
     @staticmethod
@@ -21,30 +20,40 @@ class ScreenerService:
         metrics: FinancialMetrics,
     ) -> CompanyScore:
 
-        quality_score, quality_results = (
-            QualityRules.calculate_score(metrics)
-        )
+        scorecards = [
+            QualityRules.evaluate(metrics),
+            FinancialStrengthRules.evaluate(metrics),
+            GrowthRules.evaluate(metrics),
+        ]
 
-        (
-            financial_strength_score,
-            financial_strength_results,
-        ) = FinancialStrengthRules.calculate_score(metrics)
-
+        quality_score = Decimal("0")
+        financial_strength_score = Decimal("0")
         valuation_score = Decimal("0")
         growth_score = Decimal("0")
         risk_score = Decimal("0")
 
-        total_score = (
-            quality_score
-            + financial_strength_score
-            + valuation_score
-            + growth_score
-            + risk_score
-        )
+        screening_results = []
 
-        # ==========================================================
+        total_score = Decimal("0")
+
+        for card in scorecards:
+
+            total_score += card.score
+
+            screening_results.extend(card.results)
+
+            if card.category == "Quality":
+                quality_score = card.score
+
+            elif card.category == "Financial Strength":
+                financial_strength_score = card.score
+
+            elif card.category == "Growth":
+                growth_score = card.score
+
+        # ----------------------------------------------------
         # Recommendation
-        # ==========================================================
+        # ----------------------------------------------------
 
         if total_score >= Decimal("90"):
             recommendation = "Strong Buy"
@@ -55,9 +64,9 @@ class ScreenerService:
         else:
             recommendation = "Watch"
 
-        # ==========================================================
+        # ----------------------------------------------------
         # Confidence
-        # ==========================================================
+        # ----------------------------------------------------
 
         if total_score >= Decimal("75"):
             confidence = "High"
@@ -77,8 +86,6 @@ class ScreenerService:
             total_score=total_score,
             recommendation=recommendation,
             confidence=confidence,
-            screening_results=[
-                *quality_results,
-                *financial_strength_results,
-            ],
+            scorecards=scorecards,
+            screening_results=screening_results,
         )
