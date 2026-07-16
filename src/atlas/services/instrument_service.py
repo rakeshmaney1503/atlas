@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
+from atlas.database.models.holding import Holding
 from atlas.database.models.instrument import Instrument
 
 
@@ -48,3 +49,29 @@ class InstrumentService:
     def delete_instrument(session: Session, instrument: Instrument) -> None:
         session.delete(instrument)
         session.commit()
+
+    @staticmethod
+    def seed_from_holdings(session: Session) -> int:
+        holding_symbols = {
+            symbol
+            for symbol in session.exec(select(Holding.instrument)).all()
+            if symbol is not None and symbol != ""
+        }
+
+        if not holding_symbols:
+            return 0
+
+        existing_symbols = {
+            symbol
+            for symbol in session.exec(select(Instrument.symbol)).all()
+            if symbol is not None and symbol != ""
+        }
+
+        new_symbols = sorted(holding_symbols - existing_symbols)
+        instruments = [Instrument(symbol=symbol, name=symbol) for symbol in new_symbols]
+
+        if instruments:
+            session.add_all(instruments)
+            session.commit()
+
+        return len(instruments)

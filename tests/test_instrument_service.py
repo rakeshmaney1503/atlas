@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlmodel import SQLModel, Session, create_engine
 
+from atlas.database.models.holding import Holding
 from atlas.database.models.instrument import Instrument
 from atlas.services.instrument_service import InstrumentService
 
@@ -85,3 +86,143 @@ def test_update_and_delete_instrument() -> None:
         deleted = InstrumentService.get_instrument_by_id(session, fetched.id)
 
     assert deleted is None
+
+
+def test_seed_from_holdings_with_empty_holdings() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        seeded = InstrumentService.seed_from_holdings(session)
+
+    assert seeded == 0
+    assert InstrumentService.list_instruments(session) == []
+
+
+def test_seed_from_holdings_creates_unique_instruments() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    holdings = [
+        Holding(
+            account_id=UUID("11111111-1111-1111-1111-111111111111"),
+            instrument="TCS",
+            quantity=10,
+            average_cost=0,
+            last_traded_price=0,
+            invested_amount=0,
+            current_value=0,
+            pnl=0,
+            net_change_percent=0,
+            day_change_percent=0,
+        ),
+        Holding(
+            account_id=UUID("11111111-1111-1111-1111-111111111111"),
+            instrument="RELIANCE",
+            quantity=10,
+            average_cost=0,
+            last_traded_price=0,
+            invested_amount=0,
+            current_value=0,
+            pnl=0,
+            net_change_percent=0,
+            day_change_percent=0,
+        ),
+    ]
+
+    with Session(engine) as session:
+        session.add_all(holdings)
+        session.commit()
+
+        seeded = InstrumentService.seed_from_holdings(session)
+        instruments = InstrumentService.list_instruments(session)
+
+    assert seeded == 2
+    assert {i.symbol for i in instruments} == {"TCS", "RELIANCE"}
+
+
+def test_seed_from_holdings_ignores_duplicate_holdings() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    holdings = [
+        Holding(
+            account_id=UUID("11111111-1111-1111-1111-111111111111"),
+            instrument="TCS",
+            quantity=10,
+            average_cost=0,
+            last_traded_price=0,
+            invested_amount=0,
+            current_value=0,
+            pnl=0,
+            net_change_percent=0,
+            day_change_percent=0,
+        ),
+        Holding(
+            account_id=UUID("11111111-1111-1111-1111-111111111111"),
+            instrument="TCS",
+            quantity=5,
+            average_cost=0,
+            last_traded_price=0,
+            invested_amount=0,
+            current_value=0,
+            pnl=0,
+            net_change_percent=0,
+            day_change_percent=0,
+        ),
+    ]
+
+    with Session(engine) as session:
+        session.add_all(holdings)
+        session.commit()
+
+        seeded = InstrumentService.seed_from_holdings(session)
+        instruments = InstrumentService.list_instruments(session)
+
+    assert seeded == 1
+    assert len(instruments) == 1
+    assert instruments[0].symbol == "TCS"
+
+
+def test_seed_from_holdings_preserves_existing_instruments() -> None:
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+
+    existing = Instrument(symbol="TCS", name="Tata Consultancy Services")
+    holdings = [
+        Holding(
+            account_id=UUID("11111111-1111-1111-1111-111111111111"),
+            instrument="TCS",
+            quantity=10,
+            average_cost=0,
+            last_traded_price=0,
+            invested_amount=0,
+            current_value=0,
+            pnl=0,
+            net_change_percent=0,
+            day_change_percent=0,
+        ),
+        Holding(
+            account_id=UUID("11111111-1111-1111-1111-111111111111"),
+            instrument="INFY",
+            quantity=5,
+            average_cost=0,
+            last_traded_price=0,
+            invested_amount=0,
+            current_value=0,
+            pnl=0,
+            net_change_percent=0,
+            day_change_percent=0,
+        ),
+    ]
+
+    with Session(engine) as session:
+        session.add(existing)
+        session.add_all(holdings)
+        session.commit()
+
+        seeded = InstrumentService.seed_from_holdings(session)
+        instruments = InstrumentService.list_instruments(session)
+
+    assert seeded == 1
+    assert {i.symbol for i in instruments} == {"TCS", "INFY"}
